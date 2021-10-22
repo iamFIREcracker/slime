@@ -25,6 +25,7 @@
 (defvar *swank-debug-p* t
   "When true, print extra debugging information.")
 
+(defvar *istate* nil)
 (defvar *backtrace-pprint-dispatch-table*
   (let ((table (copy-pprint-dispatch nil)))
     (flet ((print-string (stream string)
@@ -1888,7 +1889,10 @@ aborted and return immediately with the output written so far."
   (let ((width (or width 512)))
     (without-printing-errors (:object object :stream nil)
       (with-string-stream (stream :length width)
-        (write object :stream stream :right-margin width :lines 1)))))
+          (handler-case 
+              (with-bindings (add-to-bindings object *istate*)
+          (write object :stream stream :right-margin width :lines 1))
+            (serious-condition (c) (format stream "~a" c)))))))
 
 (defun escape-string (string stream &key length (map '((#\" . "\\\"")
                                                        (#\\ . "\\\\"))))
@@ -3122,6 +3126,7 @@ DSPEC is a string and LOCATION a source location. NAME is a string."
 (defstruct inspector-state)
 (defstruct (istate (:conc-name istate.) (:include inspector-state))
   object
+  bindings
   (verbose *inspector-verbose*)
   (parts (make-array 10 :adjustable t :fill-pointer 0))
   (actions (make-array 10 :adjustable t :fill-pointer 0))
@@ -3129,7 +3134,6 @@ DSPEC is a string and LOCATION a source location. NAME is a string."
   content
   next previous)
 
-(defvar *istate* nil)
 (defvar *inspector-history*)
 
 (defun reset-inspector ()
@@ -3149,9 +3153,28 @@ DSPEC is a string and LOCATION a source location. NAME is a string."
       (setf (getf metadata-plist indicator) data)
       data)))
 
+(defmethod on-inspect-bind-to (x)
+  (declare (ignore x))
+  nil)
+
+
+(defun add-to-bindings (o prev-istate)
+  "Returns an ALIST safe for WITH-BINDINGS"
+  ;; TODO: reverse order when applied
+  (let ((bind-var (on-inspect-bind-to o))
+        (bindings (when prev-istate (istate.bindings prev-istate))))
+    (when bind-var
+      #+(or)
+        (format *debug-io* "add binding ~s to ~s~%" bind-var bindings)
+        (push (cons bind-var o)
+              bindings))
+    bindings))
+
+
 (defun inspect-object (o)
   (let* ((prev *istate*)
          (istate (make-istate :object o :previous prev
+                              :bindings (add-to-bindings o prev)
                               :verbose (cond (prev (istate.verbose prev))
                                              (t *inspector-verbose*)))))
     (setq *istate* istate)
@@ -3166,7 +3189,8 @@ DSPEC is a string and LOCATION a source location. NAME is a string."
   (with-bindings (if (istate.verbose istate)
                      *inspector-verbose-printer-bindings*
                      *inspector-printer-bindings*)
-    (emacs-inspect (istate.object istate))))
+    (with-bindings (istate.bindings istate)
+      (emacs-inspect (istate.object istate)))))
 
 (defun istate>elisp (istate)
   (list :title (prepare-title istate)
