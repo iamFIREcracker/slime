@@ -102,6 +102,13 @@
                    :local-host host :reuse-address t
                    :backlog (or backlog 5)))
 
+(defimplementation local-addr (socket)
+  (let* ((u32ip (ccl:local-host socket))
+         (a (ldb (byte 8 24) u32ip))
+         (b (ldb (byte 8 16) u32ip))
+         (c (ldb (byte 8  8) u32ip))
+         (d (ldb (byte 8  0) u32ip)))
+    (coerce (list a b c d) 'simple-array)))
 (defimplementation local-port (socket)
   (ccl:local-port socket))
 
