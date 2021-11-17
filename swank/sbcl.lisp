@@ -1720,6 +1720,16 @@ stack."
     ;; sometimes the name is not a string (e.g. NIL)
     (princ-to-string (sb-thread:thread-name thread)))
 
+  (defimplementation thread-attributes (thread)
+    (let* ((tid (sb-thread:thread-os-tid thread))
+           (cpu-time
+             (ignore-errors
+               (with-open-file (s (format nil "/proc/self/task/~d/schedstat" tid))
+                 (* (parse-integer (read-line s nil nil) :junk-allowed t)
+                    1d-9)))))
+      (list :tid (sb-thread:thread-os-tid thread)
+            :cpu-secs (format nil "~,3f" cpu-time))))
+
   (defimplementation thread-status (thread)
     (if (sb-thread:thread-alive-p thread)
         "Running"
