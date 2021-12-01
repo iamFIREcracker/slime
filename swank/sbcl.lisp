@@ -1723,12 +1723,14 @@ stack."
   (defimplementation thread-attributes (thread)
     (let* ((tid (sb-thread:thread-os-tid thread))
            (cpu-time
+             #+linux
              (ignore-errors
                (with-open-file (s (format nil "/proc/self/task/~d/schedstat" tid))
                  (* (parse-integer (read-line s nil nil) :junk-allowed t)
                     1d-9)))))
-      (list :tid (sb-thread:thread-os-tid thread)
-            :cpu-secs (format nil "~,3f" cpu-time))))
+      (list* :tid (sb-thread:thread-os-tid thread)
+             (when cpu-time
+               `(:cpu-secs (format nil "~,3f" cpu-time))))))
 
   (defimplementation thread-status (thread)
     (if (sb-thread:thread-alive-p thread)
