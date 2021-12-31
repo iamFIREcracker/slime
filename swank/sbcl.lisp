@@ -1730,7 +1730,7 @@ stack."
                     1d-9)))))
       (list* :tid (sb-thread:thread-os-tid thread)
              (when cpu-time
-               `(:cpu-secs (format nil "~,3f" cpu-time))))))
+               `(:cpu-secs ,(format nil "~,3f" cpu-time))))))
 
   (defimplementation thread-status (thread)
     (if (sb-thread:thread-alive-p thread)
