@@ -1720,10 +1720,10 @@ stack."
     ;; sometimes the name is not a string (e.g. NIL)
     (princ-to-string (sb-thread:thread-name thread)))
 
+  #+linux
   (defimplementation thread-attributes (thread)
     (let* ((tid (sb-thread:thread-os-tid thread))
            (cpu-time
-             #+linux
              (ignore-errors
                (with-open-file (s (format nil "/proc/self/task/~d/schedstat" tid))
                  (* (parse-integer (read-line s nil nil) :junk-allowed t)
