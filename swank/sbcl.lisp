@@ -1684,7 +1684,7 @@ stack."
     (sb-thread:make-mutex :name "thread id map lock"))
 
   (defimplementation spawn (fn &key name)
-    (sb-thread:make-thread fn :name name))
+    (sb-thread:make-thread fn :name (coerce name 'simple-string)))
 
   (defimplementation thread-id (thread)
     (block thread-id
